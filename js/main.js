@@ -261,8 +261,6 @@ if (!email) {
       body: JSON.stringify({
   reference: transaction.reference,
 
-  expectedAmount: Math.round(total * 100),
-
   customer: {
     name:
       `${form.querySelector('input[autocomplete="given-name"]')?.value || ""} ${form.querySelector('input[autocomplete="family-name"]')?.value || ""}`
