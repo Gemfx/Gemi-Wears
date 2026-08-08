@@ -29,48 +29,66 @@ export default async function handler(req, res) {
       });
     }
 
+    const supabaseUrl =
+      (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+
+    const supabaseKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl) {
+      return res.status(500).json({
+        success: false,
+        message: "SUPABASE_URL is missing"
+      });
+    }
+
+    if (!supabaseKey) {
+      return res.status(500).json({
+        success: false,
+        message: "SUPABASE_SERVICE_ROLE_KEY is missing"
+      });
+    }
+
     if (!process.env.PAYSTACK_SECRET_KEY) {
       return res.status(500).json({
         success: false,
-        message: "Paystack configuration is missing"
+        message: "PAYSTACK_SECRET_KEY is missing"
       });
     }
 
-    if (!process.env.SUPABASE_URL) {
-      return res.status(500).json({
-        success: false,
-        message: "Supabase configuration is missing"
-      });
-    }
+    // -----------------------------
+    // VERIFY PAYSTACK PAYMENT
+    // -----------------------------
 
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return res.status(500).json({
-        success: false,
-        message: "Supabase secret is missing"
-      });
-    }
-
-    // Verify transaction with Paystack
-    const response = await fetch(
+    const paystackResponse = await fetch(
       `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
       {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
+          Authorization:
+            `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
         }
       }
     );
 
-    const result = await response.json();
+    const paystackResult =
+      await paystackResponse.json();
 
-    if (!response.ok || !result.status || !result.data) {
+    if (
+      !paystackResponse.ok ||
+      !paystackResult.status ||
+      !paystackResult.data
+    ) {
       return res.status(400).json({
         success: false,
-        message: result.message || "Unable to verify payment"
+        message:
+          paystackResult.message ||
+          "Unable to verify payment"
       });
     }
 
-    const transaction = result.data;
+    const transaction =
+      paystackResult.data;
 
     if (transaction.status !== "success") {
       return res.status(400).json({
@@ -86,56 +104,65 @@ export default async function handler(req, res) {
       });
     }
 
-    const paidAmount = Number(transaction.amount);
-    const requiredAmount = Number(expectedAmount);
+    const paidAmount =
+      Number(transaction.amount);
 
-   if (paidAmount !== requiredAmount) {
-  console.error("AMOUNT MISMATCH:", {
-    paystackAmount: paidAmount,
-    expectedAmount: requiredAmount,
-    paystackAmountNaira: paidAmount / 100,
-    expectedAmountNaira: requiredAmount / 100
-  });
+    const requiredAmount =
+      Number(expectedAmount);
 
-  return res.status(400).json({
-    success: false,
-    message: "Payment amount does not match the order total",
-    debug: {
-      paystackAmount: paidAmount,
-      expectedAmount: requiredAmount,
-      paystackAmountNaira: paidAmount / 100,
-      expectedAmountNaira: requiredAmount / 100
+    if (paidAmount !== requiredAmount) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Payment amount does not match order total"
+      });
     }
-  });
-}
 
-    // Prevent duplicate order creation
-    const existingResponse = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/orders?paystack_reference=eq.${encodeURIComponent(
-        transaction.reference
-      )}&select=order_id`,
-      {
-        headers: {
-          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+    // -----------------------------
+    // CHECK FOR DUPLICATE ORDER
+    // -----------------------------
+
+    const existingResponse =
+      await fetch(
+        `${supabaseUrl}/rest/v1/orders?paystack_reference=eq.${encodeURIComponent(
+          transaction.reference
+        )}&select=order_id`,
+        {
+          method: "GET",
+
+          headers: {
+            apikey: supabaseKey,
+            Authorization:
+              `Bearer ${supabaseKey}`
+          }
         }
-      }
-    );
+      );
 
-    const existingOrders = await existingResponse.json();
+    const existingOrders =
+      await existingResponse.json();
 
-    if (Array.isArray(existingOrders) && existingOrders.length > 0) {
+    if (
+      existingResponse.ok &&
+      Array.isArray(existingOrders) &&
+      existingOrders.length > 0
+    ) {
       return res.status(200).json({
         success: true,
         message: "Order already exists",
         data: {
-          orderId: existingOrders[0].order_id,
-          reference: transaction.reference
+          orderId:
+            existingOrders[0].order_id,
+
+          reference:
+            transaction.reference
         }
       });
     }
 
-    // Generate GEMI order ID
+    // -----------------------------
+    // GENERATE ORDER ID
+    // -----------------------------
+
     const now = new Date();
 
     const date =
@@ -143,15 +170,23 @@ export default async function handler(req, res) {
       String(now.getMonth() + 1).padStart(2, "0") +
       String(now.getDate()).padStart(2, "0");
 
-    const random = Math.floor(1000 + Math.random() * 9000);
+    const random =
+      Math.floor(
+        1000 + Math.random() * 9000
+      );
 
-    const orderId = `GEMI-${date}-${random}`;
+    const orderId =
+      `GEMI-${date}-${random}`;
 
-    // Create order
+    // -----------------------------
+    // CREATE ORDER
+    // -----------------------------
+
     const order = {
       order_id: orderId,
 
-      paystack_reference: transaction.reference,
+      paystack_reference:
+        transaction.reference,
 
       customer_name:
         customer?.name ||
@@ -168,77 +203,123 @@ export default async function handler(req, res) {
         transaction.customer?.phone ||
         "",
 
-      amount: paidAmount / 100,
+      amount:
+        paidAmount / 100,
 
-      currency: transaction.currency,
+      currency:
+        transaction.currency,
 
       delivery_method:
-        deliveryMethod || "Not specified",
+        deliveryMethod ||
+        "Not specified",
 
-      status: "processing",
+      status:
+        "processing",
 
-      items: Array.isArray(items) ? items : []
+      items:
+        Array.isArray(items)
+          ? items
+          : []
     };
 
-    const supabaseUrl =
-  process.env.SUPABASE_URL.replace(/\/+$/, "");
-
-const createResponse = await fetch(
-  `${supabaseUrl}/rest/v1/orders`,
-      {
-        method: "POST",
-
-        headers: {
-          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-
-          Authorization:
-            `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-
-          "Content-Type": "application/json",
-
-          Prefer: "return=representation"
-        },
-
-        body: JSON.stringify(order)
-      }
+    console.log(
+      "Creating GEMI order:",
+      order
     );
 
-    const createdOrder = await createResponse.json();
+    const createResponse =
+      await fetch(
+        `${supabaseUrl}/rest/v1/orders`,
+        {
+          method: "POST",
 
-  if (!createResponse.ok) {
-  console.error("SUPABASE ORDER CREATION ERROR:", {
-    status: createResponse.status,
-    response: createdOrder,
-    order: order
-  });
+          headers: {
+            apikey: supabaseKey,
 
-  return res.status(500).json({
-    success: false,
-    message: "Payment verified but order could not be created",
-    databaseError: createdOrder
-  });
-}
+            Authorization:
+              `Bearer ${supabaseKey}`,
+
+            "Content-Type":
+              "application/json",
+
+            Prefer:
+              "return=representation"
+          },
+
+          body:
+            JSON.stringify(order)
+        }
+      );
+
+    const createdOrder =
+      await createResponse.json();
+
+    if (!createResponse.ok) {
+
+      console.error(
+        "SUPABASE ORDER CREATION ERROR:",
+        {
+          status:
+            createResponse.status,
+
+          response:
+            createdOrder,
+
+          supabaseUrl:
+            supabaseUrl
+        }
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          "Payment verified but order could not be created",
+
+        databaseError:
+          createdOrder
+      });
+    }
+
+    // -----------------------------
+    // SUCCESS
+    // -----------------------------
 
     return res.status(200).json({
       success: true,
 
-      message: "Payment verified and order created",
+      message:
+        "Payment verified and order created",
 
       data: {
-        orderId,
-        reference: transaction.reference,
-        amount: transaction.amount,
-        currency: transaction.currency,
-        status: transaction.status
+        orderId:
+          orderId,
+
+        reference:
+          transaction.reference,
+
+        amount:
+          transaction.amount,
+
+        currency:
+          transaction.currency,
+
+        status:
+          "processing"
       }
     });
 
   } catch (error) {
-    console.error("Payment verification error:", error);
+
+    console.error(
+      "Payment verification error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Payment verification failed"
+      message:
+        "Payment verification failed"
     });
   }
 }
