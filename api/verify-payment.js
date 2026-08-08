@@ -202,14 +202,19 @@ export default async function handler(req, res) {
 
     const createdOrder = await createResponse.json();
 
-    if (!createResponse.ok) {
-      console.error("Supabase error:", createdOrder);
+  if (!createResponse.ok) {
+  console.error("SUPABASE ORDER CREATION ERROR:", {
+    status: createResponse.status,
+    response: createdOrder,
+    order: order
+  });
 
-      return res.status(500).json({
-        success: false,
-        message: "Payment verified but order could not be created"
-      });
-    }
+  return res.status(500).json({
+    success: false,
+    message: "Payment verified but order could not be created",
+    databaseError: createdOrder
+  });
+}
 
     return res.status(200).json({
       success: true,
