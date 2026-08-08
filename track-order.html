@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Track Order | GEMI WEARS</title>
+
+  <link rel="stylesheet" href="css/styles.css">
+
+  <style>
+    .tracking-page {
+      min-height: 80vh;
+      padding: 100px 20px;
+      max-width: 900px;
+      margin: auto;
+    }
+
+    .tracking-form {
+      display: flex;
+      gap: 12px;
+      margin: 30px 0;
+    }
+
+    .tracking-form input {
+      flex: 1;
+      padding: 16px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    .tracking-form button {
+      padding: 16px 25px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .tracking-result {
+      display: none;
+      margin-top: 40px;
+    }
+
+    .tracking-header {
+      margin-bottom: 35px;
+    }
+
+    .tracking-status {
+      margin-top: 30px;
+    }
+
+    .tracking-step {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 18px 0;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .tracking-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid #999;
+    }
+
+    .tracking-step.completed .tracking-dot {
+      background: #111;
+      border-color: #111;
+    }
+
+    .tracking-step.current {
+      font-weight: bold;
+    }
+
+    .tracking-error {
+      display: none;
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #ccc;
+    }
+
+    .order-items {
+      margin-top: 30px;
+    }
+
+    .order-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #ddd;
+    }
+
+    @media (max-width: 600px) {
+      .tracking-form {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="tracking-page">
+
+    <p class="eyebrow">GEMI WEARS</p>
+
+    <h1>Track Your Order</h1>
+
+    <p>
+      Enter your GEMI WEARS order number to see your delivery status.
+    </p>
+
+    <form id="trackingForm" class="tracking-form">
+
+      <input
+        id="orderId"
+        type="text"
+        placeholder="e.g. GEMI-20260808-4821"
+        required
+      >
+
+      <button type="submit">
+        Track Order
+      </button>
+
+    </form>
+
+    <div id="trackingError" class="tracking-error"></div>
+
+    <section id="trackingResult" class="tracking-result">
+
+      <div class="tracking-header">
+
+        <p class="eyebrow">ORDER</p>
+
+        <h2 id="displayOrderId"></h2>
+
+        <p>
+          Order placed:
+          <strong id="displayDate"></strong>
+        </p>
+
+        <p>
+          Delivery:
+          <strong id="displayDelivery"></strong>
+        </p>
+
+      </div>
+
+      <div class="tracking-status">
+
+        <div
+          class="tracking-step"
+          data-status="processing"
+        >
+          <span class="tracking-dot"></span>
+          <span>Processing</span>
+        </div>
+
+        <div
+          class="tracking-step"
+          data-status="shipped"
+        >
+          <span class="tracking-dot"></span>
+          <span>Shipped</span>
+        </div>
+
+        <div
+          class="tracking-step"
+          data-status="in_transit"
+        >
+          <span class="tracking-dot"></span>
+          <span>In Transit</span>
+        </div>
+
+        <div
+          class="tracking-step"
+          data-status="out_for_delivery"
+        >
+          <span class="tracking-dot"></span>
+          <span>Out for Delivery</span>
+        </div>
+
+        <div
+          class="tracking-step"
+          data-status="delivered"
+        >
+          <span class="tracking-dot"></span>
+          <span>Delivered</span>
+        </div>
+
+      </div>
+
+      <div class="order-items">
+
+        <h3>Order Items</h3>
+
+        <div id="orderItems"></div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <script src="js/tracking.js"></script>
+
+</body>
+</html>
