@@ -260,6 +260,7 @@ if (!email) {
       },
       body: JSON.stringify({
         reference: transaction.reference
+        expectedAmount: Math.round(total * 100)
       })
     });
 
