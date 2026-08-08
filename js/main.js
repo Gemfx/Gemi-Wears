@@ -178,12 +178,112 @@
   }
 
   function initCheckout() {
-    const root = document.querySelector("[data-checkout-summary]"); const form = document.querySelector("[data-checkout-form]"); if (!root || !form) return;
-    function draw() { const delivery = form.querySelector('[name="delivery"]:checked')?.value || "nigeria"; root.innerHTML = GemiStore.getCart().length ? summaryHtml({ checkout: true, delivery }) : `<div class="empty-state"><h2>Your bag is empty.</h2><p>Add a piece before checkout.</p><a class="button" href="shop.html">Shop now</a></div>`; }
-    window.addEventListener("gemi:cart-updated", draw); draw();
-    form.querySelectorAll('[name="delivery"]').forEach((input) => input.addEventListener("change", draw));
-    form.addEventListener("submit", (event) => { event.preventDefault(); if (!GemiStore.getCart().length) { showToast("Your bag is empty. Add a piece before checkout."); return; } if (!form.reportValidity()) return; GemiStore.clear(); form.closest('.checkout-layout').innerHTML = `<div class="empty-state" style="grid-column:1 / -1"><p class="eyebrow">Order received</p><h2>Thank you for moving with us.</h2><p>We’ve reserved your pieces. Our team will confirm your payment and delivery details by email shortly.</p><a class="button" href="index.html">Return home</a></div>`; });
+  const root = document.querySelector("[data-checkout-summary]");
+  const form = document.querySelector("[data-checkout-form]");
+
+  if (!root || !form) return;
+
+  function draw() {
+    root.innerHTML = GemiStore.getCart().length
+      ? summaryHtml({ checkout: true })
+      : `<div class="empty-state">
+          <h2>Your bag is empty.</h2>
+          <p>Add a piece before checkout.</p>
+          <a class="button" href="shop.html">Shop now</a>
+        </div>`;
   }
+
+  window.addEventListener("gemi:cart-updated", draw);
+  draw();
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    if (!GemiStore.getCart().length) {
+      showToast("Your bag is empty. Add a piece before checkout.");
+      return;
+    }
+
+    if (!form.reportValidity()) return;
+
+    // Make sure Paystack is loaded
+    if (typeof PaystackPop === "undefined") {
+      showToast("Paystack is not available. Please refresh the page.");
+      return;
+    }
+
+    const formData = new FormData(form);
+    const email = formData.get("email");
+
+    if (!email) {
+      showToast("Please enter your email address.");
+      return;
+    }
+
+    // Get the total amount from the GEMI cart
+    const total = GemiStore.total();
+
+    if (!total || total <= 0) {
+      showToast("Unable to calculate your order total.");
+      return;
+    }
+
+    const paystack = new PaystackPop();
+
+    paystack.newTransaction({
+      key: "pk_test_2cc397636d8a3cd5164bffe53f015d618964bd78",
+
+      email: email,
+
+      // Paystack expects the amount in kobo
+      amount: Math.round(total * 100),
+
+      currency: "NGN",
+
+      metadata: {
+        brand: "GEMI WEARS",
+        customer_name: `${formData.get("firstName") || ""} ${formData.get("lastName") || ""}`.trim(),
+        phone: formData.get("phone") || "",
+        delivery_method: formData.get("delivery") || ""
+      },
+
+      onSuccess: function (transaction) {
+        console.log("Paystack payment successful:", transaction);
+
+        GemiStore.clear();
+
+        form.closest(".checkout-layout").innerHTML = `
+          <div class="empty-state" style="grid-column:1 / -1">
+            <p class="eyebrow">Payment successful</p>
+
+            <h2>Thank you for moving with us.</h2>
+
+            <p>
+              Your payment has been received successfully.
+              Your GEMI WEARS order is being processed.
+            </p>
+
+            <p>
+              <strong>Transaction reference:</strong><br>
+              ${transaction.reference}
+            </p>
+
+            <a class="button" href="index.html">Return home</a>
+          </div>
+        `;
+      },
+
+      onCancel: function () {
+        showToast("Payment cancelled. Your order has not been placed.");
+      },
+
+      onError: function (error) {
+        console.error("Paystack error:", error);
+        showToast("Payment could not be completed. Please try again.");
+      }
+    });
+  });
+}
 
   function initForms() {
     document.querySelectorAll("[data-newsletter]").forEach((form) => form.addEventListener("submit", (event) => { event.preventDefault(); if (form.reportValidity()) { showToast("You’re on the list. Welcome to the circle."); form.reset(); } }));
