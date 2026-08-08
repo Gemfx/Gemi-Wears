@@ -249,31 +249,65 @@ if (!email) {
   delivery_method: form.querySelector('input[name="delivery"]:checked')?.value || ""
 },
       
-      onSuccess: function (transaction) {
-        console.log("Paystack payment successful:", transaction);
+  onSuccess: async function (transaction) {
+  console.log("Paystack payment completed:", transaction);
 
-        GemiStore.clear();
-
-        form.closest(".checkout-layout").innerHTML = `
-          <div class="empty-state" style="grid-column:1 / -1">
-            <p class="eyebrow">Payment successful</p>
-
-            <h2>Thank you for moving with us.</h2>
-
-            <p>
-              Your payment has been received successfully.
-              Your GEMI WEARS order is being processed.
-            </p>
-
-            <p>
-              <strong>Transaction reference:</strong><br>
-              ${transaction.reference}
-            </p>
-
-            <a class="button" href="index.html">Return home</a>
-          </div>
-        `;
+  try {
+    const response = await fetch("/api/verify-payment", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
       },
+      body: JSON.stringify({
+        reference: transaction.reference
+      })
+    });
+
+    const result = await response.json();
+
+    console.log("Paystack verification result:", result);
+
+    if (
+      response.ok &&
+      result.status === true &&
+      result.data &&
+      result.data.status === "success"
+    ) {
+      GemiStore.clear();
+
+      form.closest(".checkout-layout").innerHTML = `
+        <div class="empty-state" style="grid-column:1 / -1">
+          <p class="eyebrow">Payment successful</p>
+
+          <h2>Thank you for moving with us.</h2>
+
+          <p>
+            Your payment has been verified successfully.
+            Your GEMI WEARS order is now being processed.
+          </p>
+
+          <p>
+            <strong>Transaction reference:</strong><br>
+            ${transaction.reference}
+          </p>
+
+          <a class="button" href="index.html">Return home</a>
+        </div>
+      `;
+    } else {
+      showToast(
+        "We could not verify your payment. Please contact GEMI WEARS before trying again."
+      );
+    }
+
+  } catch (error) {
+    console.error("Payment verification error:", error);
+
+    showToast(
+      "We could not verify your payment. Please contact GEMI WEARS."
+    );
+  }
+},    
 
       onCancel: function () {
         showToast("Payment cancelled. Your order has not been placed.");
