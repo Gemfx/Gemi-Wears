@@ -30,36 +30,27 @@ export default async function handler(req, res) {
     }
 
     if (!process.env.PAYSTACK_SECRET_KEY) {
-      console.error("PAYSTACK_SECRET_KEY is missing");
-
       return res.status(500).json({
         success: false,
-        message: "Payment configuration is missing"
+        message: "Paystack configuration is missing"
       });
     }
 
     if (!process.env.SUPABASE_URL) {
-      console.error("SUPABASE_URL is missing");
-
       return res.status(500).json({
         success: false,
-        message: "Database configuration is missing"
+        message: "Supabase configuration is missing"
       });
     }
 
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error("SUPABASE_SERVICE_ROLE_KEY is missing");
-
       return res.status(500).json({
         success: false,
-        message: "Database secret is missing"
+        message: "Supabase secret is missing"
       });
     }
 
-    // ---------------------------------------
-    // 1. VERIFY PAYMENT WITH PAYSTACK
-    // ---------------------------------------
-
+    // Verify transaction with Paystack
     const response = await fetch(
       `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
       {
@@ -81,10 +72,6 @@ export default async function handler(req, res) {
 
     const transaction = result.data;
 
-    const paidAmount = Number(transaction.amount);
-    const requiredAmount = Number(expectedAmount);
-
-    // Payment must be successful
     if (transaction.status !== "success") {
       return res.status(400).json({
         success: false,
@@ -92,7 +79,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Currency must be NGN
     if (transaction.currency !== "NGN") {
       return res.status(400).json({
         success: false,
@@ -100,7 +86,9 @@ export default async function handler(req, res) {
       });
     }
 
-    // Amount must match exactly
+    const paidAmount = Number(transaction.amount);
+    const requiredAmount = Number(expectedAmount);
+
     if (paidAmount !== requiredAmount) {
       return res.status(400).json({
         success: false,
@@ -108,16 +96,12 @@ export default async function handler(req, res) {
       });
     }
 
-    // ---------------------------------------
-    // 2. PREVENT DUPLICATE ORDERS
-    // ---------------------------------------
-
+    // Prevent duplicate order creation
     const existingResponse = await fetch(
       `${process.env.SUPABASE_URL}/rest/v1/orders?paystack_reference=eq.${encodeURIComponent(
         transaction.reference
       )}&select=order_id`,
       {
-        method: "GET",
         headers: {
           apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
           Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
@@ -130,38 +114,30 @@ export default async function handler(req, res) {
     if (Array.isArray(existingOrders) && existingOrders.length > 0) {
       return res.status(200).json({
         success: true,
-        message: "Payment already processed",
+        message: "Order already exists",
         data: {
-          reference: transaction.reference,
           orderId: existingOrders[0].order_id,
-          amount: transaction.amount,
-          currency: transaction.currency,
-          status: transaction.status
+          reference: transaction.reference
         }
       });
     }
 
-    // ---------------------------------------
-    // 3. GENERATE GEMI ORDER ID
-    // ---------------------------------------
+    // Generate GEMI order ID
+    const now = new Date();
 
-    const date = new Date();
+    const date =
+      now.getFullYear().toString() +
+      String(now.getMonth() + 1).padStart(2, "0") +
+      String(now.getDate()).padStart(2, "0");
 
-    const datePart =
-      date.getFullYear().toString() +
-      String(date.getMonth() + 1).padStart(2, "0") +
-      String(date.getDate()).padStart(2, "0");
+    const random = Math.floor(1000 + Math.random() * 9000);
 
-    const randomPart = Math.floor(1000 + Math.random() * 9000);
+    const orderId = `GEMI-${date}-${random}`;
 
-    const orderId = `GEMI-${datePart}-${randomPart}`;
-
-    // ---------------------------------------
-    // 4. CREATE ORDER IN SUPABASE
-    // ---------------------------------------
-
+    // Create order
     const order = {
       order_id: orderId,
+
       paystack_reference: transaction.reference,
 
       customer_name:
@@ -184,8 +160,7 @@ export default async function handler(req, res) {
       currency: transaction.currency,
 
       delivery_method:
-        deliveryMethod ||
-        "Not specified",
+        deliveryMethod || "Not specified",
 
       status: "processing",
 
@@ -196,12 +171,18 @@ export default async function handler(req, res) {
       `${process.env.SUPABASE_URL}/rest/v1/orders`,
       {
         method: "POST",
+
         headers: {
           apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+
+          Authorization:
+            `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+
           "Content-Type": "application/json",
+
           Prefer: "return=representation"
         },
+
         body: JSON.stringify(order)
       }
     );
@@ -209,7 +190,7 @@ export default async function handler(req, res) {
     const createdOrder = await createResponse.json();
 
     if (!createResponse.ok) {
-      console.error("Supabase order creation error:", createdOrder);
+      console.error("Supabase error:", createdOrder);
 
       return res.status(500).json({
         success: false,
@@ -217,21 +198,17 @@ export default async function handler(req, res) {
       });
     }
 
-    // ---------------------------------------
-    // 5. RETURN ORDER DETAILS
-    // ---------------------------------------
-
     return res.status(200).json({
       success: true,
 
-      message: "Payment verified and order created successfully",
+      message: "Payment verified and order created",
 
       data: {
+        orderId,
         reference: transaction.reference,
         amount: transaction.amount,
         currency: transaction.currency,
-        status: transaction.status,
-        orderId: orderId
+        status: transaction.status
       }
     });
 
