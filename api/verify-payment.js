@@ -89,12 +89,25 @@ export default async function handler(req, res) {
     const paidAmount = Number(transaction.amount);
     const requiredAmount = Number(expectedAmount);
 
-    if (paidAmount !== requiredAmount) {
-      return res.status(400).json({
-        success: false,
-        message: "Payment amount does not match the order total"
-      });
+   if (paidAmount !== requiredAmount) {
+  console.error("AMOUNT MISMATCH:", {
+    paystackAmount: paidAmount,
+    expectedAmount: requiredAmount,
+    paystackAmountNaira: paidAmount / 100,
+    expectedAmountNaira: requiredAmount / 100
+  });
+
+  return res.status(400).json({
+    success: false,
+    message: "Payment amount does not match the order total",
+    debug: {
+      paystackAmount: paidAmount,
+      expectedAmount: requiredAmount,
+      paystackAmountNaira: paidAmount / 100,
+      expectedAmountNaira: requiredAmount / 100
     }
+  });
+}
 
     // Prevent duplicate order creation
     const existingResponse = await fetch(
