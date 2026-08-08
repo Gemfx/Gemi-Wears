@@ -186,11 +186,13 @@
   function draw() {
     root.innerHTML = GemiStore.getCart().length
       ? summaryHtml({ checkout: true })
-      : `<div class="empty-state">
+      : `
+        <div class="empty-state">
           <h2>Your bag is empty.</h2>
           <p>Add a piece before checkout.</p>
           <a class="button" href="shop.html">Shop now</a>
-        </div>`;
+        </div>
+      `;
   }
 
   window.addEventListener("gemi:cart-updated", draw);
@@ -206,161 +208,237 @@
 
     if (!form.reportValidity()) return;
 
-    // Make sure Paystack is loaded
     if (typeof PaystackPop === "undefined") {
       showToast("Paystack is not available. Please refresh the page.");
       return;
     }
 
-   const formData = new FormData(form);
+    const formData = new FormData(form);
 
-const emailInput = form.querySelector('input[type="email"]');
-const email = emailInput ? emailInput.value.trim() : "";
+    const emailInput = form.querySelector('input[type="email"]');
+    const email = emailInput
+      ? emailInput.value.trim()
+      : "";
 
-if (!email) {
-  showToast("Please enter your email address.");
-  return;
-}
+    if (!email) {
+      showToast("Please enter your email address.");
+      return;
+    }
 
-    // Get the total amount from the GEMI cart
-    const total = GemiStore.total();
+    // Get cart total
+    const total = Number(GemiStore.total());
 
     if (!total || total <= 0) {
       showToast("Unable to calculate your order total.");
       return;
     }
 
+    // Paystack uses kobo
+    const expectedAmount = Math.round(total * 100);
+
+    const firstName =
+      form.querySelector(
+        'input[autocomplete="given-name"]'
+      )?.value || "";
+
+    const lastName =
+      form.querySelector(
+        'input[autocomplete="family-name"]'
+      )?.value || "";
+
+    const phone =
+      form.querySelector(
+        'input[autocomplete="tel"]'
+      )?.value || "";
+
+    const deliveryMethod =
+      form.querySelector(
+        'input[name="delivery"]:checked'
+      )?.value || "";
+
+    const customerName =
+      `${firstName} ${lastName}`.trim();
+
+    // Save cart before payment
+    const cartItems = GemiStore.getCart();
+
     const paystack = new PaystackPop();
 
     paystack.newTransaction({
+
       key: "pk_test_2cc397636d8a3cd5164bffe53f015d618964bd78",
 
       email: email,
 
-      // Paystack expects the amount in kobo
-      amount: Math.round(total * 100),
+      amount: expectedAmount,
 
       currency: "NGN",
 
-     metadata: {
-  brand: "GEMI WEARS",
-  customer_name: `${form.querySelector('input[autocomplete="given-name"]')?.value || ""} ${form.querySelector('input[autocomplete="family-name"]')?.value || ""}`.trim(),
-  phone: form.querySelector('input[autocomplete="tel"]')?.value || "",
-  delivery_method: form.querySelector('input[name="delivery"]:checked')?.value || ""
-},
-      
-  onSuccess: async function (transaction) {
-  console.log("Paystack payment completed:", transaction);
-
-  try {
-    const response = await fetch("/api/verify-payment", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
+      metadata: {
+        brand: "GEMI WEARS",
+        customer_name: customerName,
+        phone: phone,
+        delivery_method: deliveryMethod
       },
-      body: JSON.stringify({
-  reference: transaction.reference,
 
-  customer: {
-    name:
-      `${form.querySelector('input[autocomplete="given-name"]')?.value || ""} ${form.querySelector('input[autocomplete="family-name"]')?.value || ""}`
-        .trim(),
+      onSuccess: async function (transaction) {
 
-    email: email,
+        console.log(
+          "Paystack payment completed:",
+          transaction
+        );
 
-    phone:
-      form.querySelector('input[autocomplete="tel"]')?.value || ""
-  },
+        try {
 
-  deliveryMethod:
-    form.querySelector('input[name="delivery"]:checked')?.value || "",
+          const response = await fetch(
+            "/api/verify-payment",
+            {
+              method: "POST",
 
-  items: GemiStore.getCart()
-})
-    });
+              headers: {
+                "Content-Type": "application/json"
+              },
 
-    const result = await response.json();
+              body: JSON.stringify({
 
-    console.log("Paystack verification result:", result);
+                reference:
+                  transaction.reference,
 
-  if (
-  response.ok &&
-  result.success === true &&
-  result.data &&
-  result.data.orderId
-) {
-  GemiStore.clear();
+                // IMPORTANT:
+                // Send the exact same amount
+                // that was sent to Paystack.
+                expectedAmount:
+                  expectedAmount,
 
-  const orderId = result.data.orderId;
+                customer: {
+                  name: customerName,
+                  email: email,
+                  phone: phone
+                },
 
-  form.closest(".checkout-layout").innerHTML = `
-    <div class="empty-state" style="grid-column:1 / -1">
+                deliveryMethod:
+                  deliveryMethod,
 
-      <p class="eyebrow">
-        Payment successful
-      </p>
+                items:
+                  cartItems
+              })
+            }
+          );
 
-      <h2>
-        Thank you for moving with us.
-      </h2>
+          const result =
+            await response.json();
 
-      <p>
-        Your payment has been verified successfully.
-        Your GEMI WEARS order is now being processed.
-      </p>
+          console.log(
+            "Payment verification result:",
+            result
+          );
 
-      <p>
-        <strong>Your Order Number:</strong><br>
-        ${orderId}
-      </p>
+          if (
+            response.ok &&
+            result.success === true &&
+            result.data &&
+            result.data.orderId
+          ) {
 
-      <p>
-        Keep this order number safe.
-        You will need it to track your delivery.
-      </p>
+            GemiStore.clear();
 
-      <a
-        class="button"
-        href="track-order.html?orderId=${encodeURIComponent(orderId)}"
-      >
-        Track My Order
-      </a>
+            const orderId =
+              result.data.orderId;
 
-      <br><br>
+            form.closest(
+              ".checkout-layout"
+            ).innerHTML = `
 
-      <a
-        class="button"
-        href="index.html"
-      >
-        Return Home
-      </a>
+              <div
+                class="empty-state"
+                style="grid-column:1 / -1"
+              >
 
-    </div>
-  `;
-} else {
-  showToast(
-    result.message ||
-    "We could not verify your payment. Please contact GEMI WEARS."
-  );
-}
+                <p class="eyebrow">
+                  Payment successful
+                </p>
 
-  } catch (error) {
-    console.error("Payment verification error:", error);
+                <h2>
+                  Thank you for moving with us.
+                </h2>
 
-    showToast(
-      "We could not verify your payment. Please contact GEMI WEARS."
-    );
-  }
-},    
+                <p>
+                  Your payment has been verified
+                  successfully.
+                  Your GEMI WEARS order is now
+                  being processed.
+                </p>
+
+                <p>
+                  <strong>
+                    Your Order Number:
+                  </strong>
+                  <br>
+                  ${orderId}
+                </p>
+
+                <p>
+                  Keep this order number safe.
+                  You will need it to track
+                  your delivery.
+                </p>
+
+                <a
+                  class="button"
+                  href="track-order.html?orderId=${encodeURIComponent(
+                    orderId
+                  )}"
+                >
+                  Track My Order
+                </a>
+
+                <br><br>
+
+                <a
+                  class="button"
+                  href="index.html"
+                >
+                  Return Home
+                </a>
+
+              </div>
+
+            `;
+
+          } else {
+
+            showToast(
+              result.message ||
+              "We could not verify your payment."
+            );
+
+            console.error(
+              "Payment verification failed:",
+              result
+            );
+          }
+
+        } catch (error) {
+
+          console.error(
+            "Payment verification error:",
+            error
+          );
+
+          showToast(
+            "We could not verify your payment. Please contact GEMI WEARS."
+          );
+        }
+      },
 
       onCancel: function () {
-        showToast("Payment cancelled. Your order has not been placed.");
-      },
 
-      onError: function (error) {
-        console.error("Paystack error:", error);
-        showToast("Payment could not be completed. Please try again.");
+        showToast(
+          "Payment was cancelled."
+        );
+
       }
+
     });
   });
 }
