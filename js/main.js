@@ -285,66 +285,66 @@ if (!email) {
 
     console.log("Paystack verification result:", result);
 
-    if (
-      response.ok &&
-      result.status === true &&
-      result.data &&
-      result.data.status === "success"
-    ) {
-      GemiStore.clear();
+  if (
+  response.ok &&
+  result.success === true &&
+  result.data &&
+  result.data.orderId
+) {
+  GemiStore.clear();
 
-const orderId =
-  result.data?.orderId || "";
+  const orderId = result.data.orderId;
 
-form.closest(".checkout-layout").innerHTML = `
-  <div class="empty-state" style="grid-column:1 / -1">
+  form.closest(".checkout-layout").innerHTML = `
+    <div class="empty-state" style="grid-column:1 / -1">
 
-    <p class="eyebrow">
-      Payment successful
-    </p>
+      <p class="eyebrow">
+        Payment successful
+      </p>
 
-    <h2>
-      Thank you for moving with us.
-    </h2>
+      <h2>
+        Thank you for moving with us.
+      </h2>
 
-    <p>
-      Your payment has been verified successfully.
-      Your GEMI WEARS order is now being processed.
-    </p>
+      <p>
+        Your payment has been verified successfully.
+        Your GEMI WEARS order is now being processed.
+      </p>
 
-    <p>
-      <strong>Your Order Number:</strong><br>
-      ${orderId}
-    </p>
+      <p>
+        <strong>Your Order Number:</strong><br>
+        ${orderId}
+      </p>
 
-    <p>
-      Keep this order number safe.
-      You will need it to track your delivery.
-    </p>
+      <p>
+        Keep this order number safe.
+        You will need it to track your delivery.
+      </p>
 
-    <a
-      class="button"
-      href="track-order.html?orderId=${encodeURIComponent(orderId)}"
-    >
-      Track My Order
-    </a>
+      <a
+        class="button"
+        href="track-order.html?orderId=${encodeURIComponent(orderId)}"
+      >
+        Track My Order
+      </a>
 
-    <br><br>
+      <br><br>
 
-    <a
-      class="button"
-      href="index.html"
-    >
-      Return Home
-    </a>
+      <a
+        class="button"
+        href="index.html"
+      >
+        Return Home
+      </a>
 
-  </div>
-`;
-    } else {
-      showToast(
-        "We could not verify your payment. Please contact GEMI WEARS before trying again."
-      );
-    }
+    </div>
+  `;
+} else {
+  showToast(
+    result.message ||
+    "We could not verify your payment. Please contact GEMI WEARS."
+  );
+}
 
   } catch (error) {
     console.error("Payment verification error:", error);
