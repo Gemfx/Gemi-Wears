@@ -180,8 +180,11 @@ export default async function handler(req, res) {
       items: Array.isArray(items) ? items : []
     };
 
-    const createResponse = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/orders`,
+    const supabaseUrl =
+  process.env.SUPABASE_URL.replace(/\/+$/, "");
+
+const createResponse = await fetch(
+  `${supabaseUrl}/rest/v1/orders`,
       {
         method: "POST",
 
