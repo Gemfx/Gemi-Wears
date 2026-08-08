@@ -212,13 +212,15 @@
       return;
     }
 
-    const formData = new FormData(form);
-    const email = formData.get("email");
+   const formData = new FormData(form);
 
-    if (!email) {
-      showToast("Please enter your email address.");
-      return;
-    }
+const emailInput = form.querySelector('input[type="email"]');
+const email = emailInput ? emailInput.value.trim() : "";
+
+if (!email) {
+  showToast("Please enter your email address.");
+  return;
+}
 
     // Get the total amount from the GEMI cart
     const total = GemiStore.total();
@@ -240,13 +242,13 @@
 
       currency: "NGN",
 
-      metadata: {
-        brand: "GEMI WEARS",
-        customer_name: `${formData.get("firstName") || ""} ${formData.get("lastName") || ""}`.trim(),
-        phone: formData.get("phone") || "",
-        delivery_method: formData.get("delivery") || ""
-      },
-
+     metadata: {
+  brand: "GEMI WEARS",
+  customer_name: `${form.querySelector('input[autocomplete="given-name"]')?.value || ""} ${form.querySelector('input[autocomplete="family-name"]')?.value || ""}`.trim(),
+  phone: form.querySelector('input[autocomplete="tel"]')?.value || "",
+  delivery_method: form.querySelector('input[name="delivery"]:checked')?.value || ""
+},
+      
       onSuccess: function (transaction) {
         console.log("Paystack payment successful:", transaction);
 
