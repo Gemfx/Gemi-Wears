@@ -259,8 +259,26 @@ if (!email) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        reference: transaction.reference
-      })
+  reference: transaction.reference,
+
+  expectedAmount: Math.round(total * 100),
+
+  customer: {
+    name:
+      `${form.querySelector('input[autocomplete="given-name"]')?.value || ""} ${form.querySelector('input[autocomplete="family-name"]')?.value || ""}`
+        .trim(),
+
+    email: email,
+
+    phone:
+      form.querySelector('input[autocomplete="tel"]')?.value || ""
+  },
+
+  deliveryMethod:
+    form.querySelector('input[name="delivery"]:checked')?.value || "",
+
+  items: GemiStore.getCart()
+})
     });
 
     const result = await response.json();
@@ -275,25 +293,53 @@ if (!email) {
     ) {
       GemiStore.clear();
 
-      form.closest(".checkout-layout").innerHTML = `
-        <div class="empty-state" style="grid-column:1 / -1">
-          <p class="eyebrow">Payment successful</p>
+const orderId =
+  result.data?.orderId || "";
 
-          <h2>Thank you for moving with us.</h2>
+form.closest(".checkout-layout").innerHTML = `
+  <div class="empty-state" style="grid-column:1 / -1">
 
-          <p>
-            Your payment has been verified successfully.
-            Your GEMI WEARS order is now being processed.
-          </p>
+    <p class="eyebrow">
+      Payment successful
+    </p>
 
-          <p>
-            <strong>Transaction reference:</strong><br>
-            ${transaction.reference}
-          </p>
+    <h2>
+      Thank you for moving with us.
+    </h2>
 
-          <a class="button" href="index.html">Return home</a>
-        </div>
-      `;
+    <p>
+      Your payment has been verified successfully.
+      Your GEMI WEARS order is now being processed.
+    </p>
+
+    <p>
+      <strong>Your Order Number:</strong><br>
+      ${orderId}
+    </p>
+
+    <p>
+      Keep this order number safe.
+      You will need it to track your delivery.
+    </p>
+
+    <a
+      class="button"
+      href="track-order.html?orderId=${encodeURIComponent(orderId)}"
+    >
+      Track My Order
+    </a>
+
+    <br><br>
+
+    <a
+      class="button"
+      href="index.html"
+    >
+      Return Home
+    </a>
+
+  </div>
+`;
     } else {
       showToast(
         "We could not verify your payment. Please contact GEMI WEARS before trying again."
