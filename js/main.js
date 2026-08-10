@@ -52,7 +52,7 @@
           </div>
         </div>
       </header>
-<nav class="mobile-menu" aria-label="Mobile navigation">${navItems.map(([id, label, href]) => `<a href="${href}" class="${page === id ? 'is-active' : ''}">${label}</a>`).join('')}</nav>
+<nav class="mobile-menu" aria-label="Mobile navigation">${navItems.map(([id, label, href]) => `<a href="${href}" class="${page === id ? 'is-active' : ''}">${label}</a>`).join('')}</nav>`;
     if (footer) footer.innerHTML = `
       <footer class="site-footer">
         <div class="newsletter"><div class="newsletter-inner"><div><h3>Stay in the circle.</h3><p>Early access to releases, stories and private events.</p></div><form class="email-form" data-newsletter><input type="email" aria-label="Email address" placeholder="Your email address" required><button type="submit">Join us →</button></form></div></div>
