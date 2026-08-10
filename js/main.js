@@ -46,14 +46,13 @@
         <div class="header-inner">
           <nav class="main-nav" aria-label="Main navigation">${navItems.map(([id, label, href]) => `<a href="${href}" class="${page === id ? 'is-active' : ''}">${label}</a>`).join('')}</nav>
           <div class="header-actions">
-            <a class="icon-button" href="login.html" aria-label="Your account">${icon.user}</a>
             <a class="icon-button" href="cart.html" aria-label="View bag">${icon.cart}<span class="cart-count" data-cart-count>0</span></a>
             <button class="icon-button menu-toggle" type="button" aria-label="Open menu" aria-expanded="false">${icon.menu}</button>
             <a class="brand brand--header" href="index.html" aria-label="GEMI WEARS home"><img class="brand-logo" src="${GEMI_BRAND.logo}" alt="GEMI WEARS logo"><span class="brand-name">${GEMI_BRAND.name}</span></a>
           </div>
         </div>
       </header>
-      <nav class="mobile-menu" aria-label="Mobile navigation">${navItems.map(([id, label, href]) => `<a href="${href}" class="${page === id ? 'is-active' : ''}">${label}</a>`).join('')}<a href="login.html">My account</a></nav>`;
+<nav class="mobile-menu" aria-label="Mobile navigation">${navItems.map(([id, label, href]) => `<a href="${href}" class="${page === id ? 'is-active' : ''}">${label}</a>`).join('')}</nav>
     if (footer) footer.innerHTML = `
       <footer class="site-footer">
         <div class="newsletter"><div class="newsletter-inner"><div><h3>Stay in the circle.</h3><p>Early access to releases, stories and private events.</p></div><form class="email-form" data-newsletter><input type="email" aria-label="Email address" placeholder="Your email address" required><button type="submit">Join us →</button></form></div></div>
