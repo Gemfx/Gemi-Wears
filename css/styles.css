@@ -2805,4 +2805,25 @@ textarea.field {
     .account-aside {
         background-attachment: scroll;
     }
+    .header-actions {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+}
+
+.header-actions .icon-button {
+  display: inline-grid !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.header-actions a[href="cart.html"] {
+  display: inline-grid !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.header-actions .menu-toggle {
+  display: inline-grid !important;
+}
 }
